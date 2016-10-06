@@ -8,8 +8,9 @@
  * sleep()の実装(ver0.7実装予定)
  * コンパイル時の警告解決(ver0.8実装済)
  * CPUとプレイヤーを交互に切り替える機能(ver0.9実装済)
- *
- * 【othello ver0.9】
+ * AIの改良(ver1.0実装予定) 2Pモードでデバックしたらバグが発見できるかも？
+ * 
+ * 【othello ver1.0】
  *
  * */
 
@@ -26,6 +27,12 @@
 
 // グローバル変数
 char board[BOARDSIZE][BOARDSIZE];	// 盤面
+int evaluation[4][BOARDSIZE] =		  {{120, -20,  20,   5,   5,  20, -20, 120},	// マスの評価用盤面
+									   {-20,  40,  -5,  -5,  -5,  -5, -40, -20},
+									   { 20,  -5,  15,   3,   3,  15,  -5,  20},
+									   {  5,  -5,   3,   3,   3,   3,  -5,   5}
+									  };
+int virtual_board[BOARDSIZE][BOARDSIZE];		// 仮想盤面
 int turn = 0, ai_x = -1, ai_y = -1;
 FILE *file;
 int play_num = 0;
@@ -52,6 +59,7 @@ void death_marking(void);			// マーキングポインタ初期化
 void ai_rand(int turn);				// 人工無能
 int init_view(void);				// 初期描画関数
 void two_player_circle_marking(int y, int x, int turn);	// 2P対戦の時互いが置いたコマをマーキング
+void put_check(int y,int x, int turn, int place);	// 一番評価が高いマスに置く関数
 
 int main(void)
 {
@@ -206,11 +214,27 @@ int init_view(void)
 void setBoard(void)
 {
 	
-	int i;
+	int i, j;
 
 	for (i = 0; i < BOARDSIZE * BOARDSIZE; ++i)
 	{
 		board[i / BOARDSIZE][i % BOARDSIZE] = NONE;
+	}
+
+	for (i = 0; i < 4; ++i)
+	{
+		for (j = 0; j < 4; ++j)
+		{
+			virtual_board[i][j] = evaluation[i][j];
+		}
+	}
+
+	for (i = 4; i > 0; --i)
+	{
+		for (j = 4; j > 0; --j)
+		{
+			virtual_board[i][j] = evaluation[j][i];
+		}
 	}
 
 	board[BOARDSIZE / 2 - 1][BOARDSIZE / 2] = BLACK;	// [3][4]
@@ -536,7 +560,7 @@ void check_winner()
 void marking(void)
 {
 	
-	int i, j;
+	int i, j, tmp_a = 0, tmp_b = 0, tmp_x, tmp_y, place = 0;
 	for (i = 0; i < BOARDSIZE; ++i)
 	{
 		for (j = 0; j < BOARDSIZE; ++j)
@@ -544,9 +568,18 @@ void marking(void)
 			if (marking_put(i, j, turn) == 1)
 			{
 				board[i][j] = MARK;
+				tmp_a = virtual_board[i][j];
+				if (tmp_a > tmp_b)
+				{
+					tmp_b = tmp_a;
+					tmp_y = i;
+					tmp_x = j;
+					tmp_a = 0;
+				}
 			}
 		}
 	}
+	put_check(tmp_y, tmp_x, turn, place);
 }
 
 // マーキングポインタ初期化
@@ -590,16 +623,20 @@ void ai_rand(int turn)
 			place = 0;
 			continue;
 		}
-
-		if (put(y - 1, x - 1, turn) == 1)
-		{
-			printf(">%d\n", place);
-			ai_y = y - 1;
-			ai_x = x - 1;
-			break;
-		}
+		
+		put_check(y, x, turn, place);
 
 		place = 0;
+	}
+}
+
+void put_check (int y, int x, int turn, int place)
+{
+	if (put(y - 1, x - 1, turn) == 1)
+	{
+		printf(">%d\n", place);
+		ai_y = y - 1;
+		ai_x = x - 1;
 	}
 }
 
