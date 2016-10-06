@@ -1,5 +1,4 @@
-/*
- * 【今後の追加したい機能】
+/* 【今後の追加したい機能】
  * 置ける箇所をマーキングする機能(ver0.2で実装済)
  * 単純なAI機能(ver0.3で実装済)
  * リアルタイムでのコマの個数表示(ver0.3で実装済)
@@ -8,8 +7,9 @@
  * ビープ音実装 1P -> 自分のターンで鳴らす。 2P -> ターン交互に鳴らす。(ver0.6実装済)
  * sleep()の実装(ver0.7実装予定)
  * コンパイル時の警告解決(ver0.8実装済)
+ * CPUとプレイヤーを交互に切り替える機能(ver0.9実装済)
  *
- * 【othello ver0.8】
+ * 【othello ver0.9】
  *
  * */
 
@@ -29,6 +29,7 @@ char board[BOARDSIZE][BOARDSIZE];	// 盤面
 int turn = 0, ai_x = -1, ai_y = -1;
 FILE *file;
 int play_num = 0;
+int not_change_flg = 0;
 
 // 向き毎の移動量
 int vec_y[] = {-1, -1, 0, 1, 1, 1, 0, -1};
@@ -51,7 +52,6 @@ void death_marking(void);			// マーキングポインタ初期化
 void ai_rand(int turn);				// 人工無能
 int init_view(void);				// 初期描画関数
 void two_player_circle_marking(int y, int x, int turn);	// 2P対戦の時互いが置いたコマをマーキング
-void death_player_circle_marking(void);					// マーキングを削除
 
 int main(void)
 {
@@ -61,8 +61,11 @@ int main(void)
 		init_view();
 		if (play_num == 1 || play_num == 2)
 		{
-			play_num = 0;
 			break;
+		}
+		else
+		{
+			play_num = 0;
 		}
 	}
 
@@ -136,11 +139,14 @@ int main(void)
 		// マーキングポインタを削除
 		death_marking();
 
-		// 相手が置いたコマのマーキングを削除
-		// death_player_circle_marking();
 
 		// 手番交代
-		turn = (turn + 1) % 2;
+		if (not_change_flg == 0)
+		{
+			turn = (turn + 1) % 2;
+		}
+
+		not_change_flg = 0;
 
 		// 終了判定
 		switch(check_end(turn))
@@ -324,6 +330,21 @@ void input(int turn)
 			scanf("%*[^\n]%+c");
 			printf("input error\n");
 			continue;
+		}
+		
+		if (place == 99)
+		{
+			if (play_num == 1)
+			{
+				play_num = 2;
+				not_change_flg = 1;
+			}
+			else
+			{
+				play_num = 1;
+				not_change_flg = 1;
+			}
+			break;
 		}
 
 		// 数値が範囲内か判定
@@ -586,12 +607,6 @@ void two_player_circle_marking(int y, int x, int turn)
 {
 	ai_y = y - 1;
 	ai_x = x - 1;
-}
-
-void death_player_circle_marking(void)
-{
-	ai_y = 0;
-	ai_x = 0;
 }
 
 void check_cnt(void)
