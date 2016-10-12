@@ -31,10 +31,14 @@ int turn = 0, ai_x = -1, ai_y = -1;
 FILE *file;
 int play_num = 0;
 int not_change_flg = 0;
-int evaluation[4][BOARDSIZE] =		  {{120, -20,  20,   5,   5,  20, -20, 120},	// マスの評価用盤面
+int evaluation[BOARDSIZE][BOARDSIZE] = {{120, -20,  20,   5,   5,  20, -20, 120},	// マスの評価用盤面
 									   {-20,  40,  -5,  -5,  -5,  -5, -40, -20},
 									   { 20,  -5,  15,   3,   3,  15,  -5,  20},
-									   {  5,  -5,   3,   3,   3,   3,  -5,   5}
+									   {  5,  -5,   3,   3,   3,   3,  -5,   5},
+									   {  5,  -5,   3,   3,   3,   3,  -5,   5},
+									   { 20,  -5,  15,   3,   3,  15,  -5, -20},
+									   {-20,  40,  -5,  -5,  -5,  -5, -40, -20},
+									   {120, -20,  20,   5,   5,  20, -20, 120}
 									  };
 int virtual_board[BOARDSIZE][BOARDSIZE];	// 評価用の盤面
 // 向き毎の移動量
@@ -217,6 +221,7 @@ void setBoard(void)
 	for (i = 0; i < BOARDSIZE * BOARDSIZE; ++i)
 	{
 		board[i / BOARDSIZE][i % BOARDSIZE] = NONE;
+		virtual_board[i / BOARDSIZE][i % BOARDSIZE] = evaluation[i / BOARDSIZE][i % BOARDSIZE];
 	}
 
 	board[BOARDSIZE / 2 - 1][BOARDSIZE / 2] = BLACK;	// [3][4]
@@ -224,21 +229,6 @@ void setBoard(void)
 	board[BOARDSIZE / 2][BOARDSIZE / 2] = WHITE;		// [4][4]
 	board[BOARDSIZE / 2 - 1][BOARDSIZE / 2 - 1] = WHITE;	// [3][3]
 
-	for (i = 0; i < 4; ++i)
-	{
-		for (j = 0; j < 4; ++j)
-		{
-			virtual_board[i][j] = evaluation[i][j];
-		}
-	}
-
-	for (i = 4; i > 0; --i)
-	{
-		for (j = 4; j > 0; --j)
-		{
-			virtual_board[i][j] = evaluation[j][i];
-		}
-	}
 }
 
 // 盤面表示関数
@@ -540,13 +530,27 @@ void check_winner()
 	disp();
 
 	// 勝者を表示
-	if (b > w)
+	if (play_num == 1)
 	{
-		printf("● : Winner BLACK!\n");
+		if (b > w)
+		{
+			printf("● : Winner YOU!\n");
+		}
+		else if (b < w)
+		{
+			printf("○ : Winner CPU!\n");
+		}
 	}
-	else if (b < w)
+	else if (play_num == 2)
 	{
-		printf("○ : Winner WHITE!\n");
+		if (b > w)
+		{
+			printf("● : Winner 1P!\n");
+		}
+		else if (b < w)
+		{
+			printf("○ : Winner 2P!\n");
+		}
 	}
 	else
 	{
