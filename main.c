@@ -8,8 +8,8 @@
  * sleep()の実装(ver0.7実装予定)
  * コンパイル時の警告解決(ver0.8実装済)
  * CPUとプレイヤーを交互に切り替える機能(ver0.9実装済)
- * AIの改良(ver1.0実装予定) 2Pモードでデバックしたらバグが発見できるかも？
- * 
+ * CPUのAI強化(ver1.0実装済)
+ *
  * 【othello ver1.0】
  *
  * */
@@ -27,17 +27,16 @@
 
 // グローバル変数
 char board[BOARDSIZE][BOARDSIZE];	// 盤面
+int turn = 0, ai_x = -1, ai_y = -1;
+FILE *file;
+int play_num = 0;
+int not_change_flg = 0;
 int evaluation[4][BOARDSIZE] =		  {{120, -20,  20,   5,   5,  20, -20, 120},	// マスの評価用盤面
 									   {-20,  40,  -5,  -5,  -5,  -5, -40, -20},
 									   { 20,  -5,  15,   3,   3,  15,  -5,  20},
 									   {  5,  -5,   3,   3,   3,   3,  -5,   5}
 									  };
-int virtual_board[BOARDSIZE][BOARDSIZE];		// 仮想盤面
-int turn = 0, ai_x = -1, ai_y = -1;
-FILE *file;
-int play_num = 0;
-int not_change_flg = 0;
-
+int virtual_board[BOARDSIZE][BOARDSIZE];	// 評価用の盤面
 // 向き毎の移動量
 int vec_y[] = {-1, -1, 0, 1, 1, 1, 0, -1};
 int vec_x[] = {0, 1, 1, 1, 0, -1, -1, -1};
@@ -59,7 +58,6 @@ void death_marking(void);			// マーキングポインタ初期化
 void ai_rand(int turn);				// 人工無能
 int init_view(void);				// 初期描画関数
 void two_player_circle_marking(int y, int x, int turn);	// 2P対戦の時互いが置いたコマをマーキング
-void put_check(int y,int x, int turn, int place);	// 一番評価が高いマスに置く関数
 
 int main(void)
 {
@@ -221,6 +219,11 @@ void setBoard(void)
 		board[i / BOARDSIZE][i % BOARDSIZE] = NONE;
 	}
 
+	board[BOARDSIZE / 2 - 1][BOARDSIZE / 2] = BLACK;	// [3][4]
+	board[BOARDSIZE / 2][BOARDSIZE / 2 - 1] = BLACK;	// [4][3]
+	board[BOARDSIZE / 2][BOARDSIZE / 2] = WHITE;		// [4][4]
+	board[BOARDSIZE / 2 - 1][BOARDSIZE / 2 - 1] = WHITE;	// [3][3]
+
 	for (i = 0; i < 4; ++i)
 	{
 		for (j = 0; j < 4; ++j)
@@ -236,11 +239,6 @@ void setBoard(void)
 			virtual_board[i][j] = evaluation[j][i];
 		}
 	}
-
-	board[BOARDSIZE / 2 - 1][BOARDSIZE / 2] = BLACK;	// [3][4]
-	board[BOARDSIZE / 2][BOARDSIZE / 2 - 1] = BLACK;	// [4][3]
-	board[BOARDSIZE / 2][BOARDSIZE / 2] = WHITE;		// [4][4]
-	board[BOARDSIZE / 2 - 1][BOARDSIZE / 2 - 1] = WHITE;	// [3][3]
 }
 
 // 盤面表示関数
@@ -560,7 +558,7 @@ void check_winner()
 void marking(void)
 {
 	
-	int i, j, tmp_a = 0, tmp_b = 0, tmp_x, tmp_y, place = 0;
+	int i, j;
 	for (i = 0; i < BOARDSIZE; ++i)
 	{
 		for (j = 0; j < BOARDSIZE; ++j)
@@ -568,18 +566,9 @@ void marking(void)
 			if (marking_put(i, j, turn) == 1)
 			{
 				board[i][j] = MARK;
-				tmp_a = virtual_board[i][j];
-				if (tmp_a > tmp_b)
-				{
-					tmp_b = tmp_a;
-					tmp_y = i;
-					tmp_x = j;
-					tmp_a = 0;
-				}
 			}
 		}
 	}
-	put_check(tmp_y, tmp_x, turn, place);
 }
 
 // マーキングポインタ初期化
@@ -601,43 +590,31 @@ void death_marking(void)
 
 void ai_rand(int turn)
 {
-	int place = 0, y, x;
-	while (1)
+	int y, x, i, j, evaluation_num = -1000;
+	// 全マスを調べて置けるマスの中で一番評価が高いマスに置く
+	for (i = 0; i < BOARDSIZE; ++i)
 	{
-		// 適当に決める
-		place = rand() % 89;
-
-		// 数値が範囲内か確認
-		if (place < 11 || place > 88)
+		for (j = 0; j < BOARDSIZE; ++j)
 		{
-			place = 0;
-			continue;
+			if (board[i][j] == MARK)
+			{
+				if (evaluation_num < virtual_board[i][j])
+				{
+					evaluation_num = virtual_board[i][j];
+					y = i;
+					x = j;
+				}
+			}
 		}
-
-		y = place / 10;
-		x = place % 10;
-
-		// もう少し詳しく確認
-		if (x < 1 || y < 1 || x > 8 || y > 8)
-		{
-			place = 0;
-			continue;
-		}
-		
-		put_check(y, x, turn, place);
-
-		place = 0;
 	}
-}
 
-void put_check (int y, int x, int turn, int place)
-{
-	if (put(y - 1, x - 1, turn) == 1)
+	if (put(y, x, turn) == 1)
 	{
-		printf(">%d\n", place);
-		ai_y = y - 1;
-		ai_x = x - 1;
+		ai_y = y;
+		ai_x = x;
 	}
+
+	evaluation_num = -1000;
 }
 
 void two_player_circle_marking(int y, int x, int turn)
